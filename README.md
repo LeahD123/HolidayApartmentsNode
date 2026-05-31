@@ -67,4 +67,4 @@ This project was built as a learning exercise to demonstrate:
 ---
 
 ## 👩‍💻 Author
-Full Stack Developer – portfolio project
+Leah dachkovsky - FullStack Developer
