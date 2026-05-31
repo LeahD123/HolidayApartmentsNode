@@ -7,6 +7,10 @@ import apartmentRouter from './api/routers/apartment.js';
 import userRouter from './api/routers/user.js'
 import categoryRouter from './api/routers/category.js';
 import cityRouter from './api/routers/city.js'
+import { WebSocketServer } from 'ws';
+import jwt from 'jsonwebtoken';
+
+
 const app = express();
 const port = 3000; // או כל פורט אחר שתרצה
 
@@ -28,7 +32,6 @@ const connectToDatabase = async () => {
     }
 };
 
-app.use(bodyParser.json())
 // הפעלת החיבור למסד הנתונים
 connectToDatabase().then(() => {
     // הגדרת מסלול לדוגמה
@@ -41,4 +44,54 @@ connectToDatabase().then(() => {
     app.listen(port, () => {
         console.log(`Example app listening at http://localhost:${port}`);
     });
+
+    //קריאה לWEBSOCKET
+    
+    dotenv.config()
+    
+    // מידלוור כללי
+    // אין לו הגדרת ניתוב
+    // בהגדרת קריאת שרת שתרצה להשתמש בו - נשלח אליו
 });
+
+export let wss;
+
+const initSocket = (server) => {
+
+    wss = new WebSocketServer({ server });
+
+    wss.on('connection', (ws, req) => {
+
+        const url = new URL(req.url, 'http://localhost:3000');
+
+        const token =
+            process.env.TOKEN ||
+            url.searchParams.get('token');
+
+        try {
+
+            const user = jwt.verify(
+                token,
+                process.env.SECRET
+            );
+
+            ws.user = user;
+
+            console.log('connected:', user.id);
+
+            ws.on('message', (message) => {
+
+                console.log(
+                    ws.user.id,
+                    message.toString()
+                );
+
+                ws.send('received');
+            });
+
+        } catch (err) {
+
+            ws.close();
+        }
+    });
+};

@@ -28,3 +28,17 @@ export const create = (req, res) => {
             .catch(err => res.status(500).send({ error: err.message })); // טיפול בשגיאות
 };
 
+export const deleteCity = (req, res) => {
+    const { id } = req.params;
+
+    City.findByIdAndDelete(id)
+        .then(deletedCity => {
+            if (!deletedCity) {
+                return res.status(404).send({ error: "City not found" });
+            }
+            res.status(200).send({ message: "City deleted successfully" });
+        })
+        .catch(err => {
+            res.status(500).send({ error: err.message });
+        });
+};

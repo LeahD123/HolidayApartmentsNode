@@ -4,12 +4,17 @@ import express from 'express'
 import {
     login,
     register
+    ,getAllUsers,
+    getApartmentsFromArr
 } from '../controllers/user.js'
-import { checkEmail } from '../middlewares.js'
+import { checkEmail, checkAuth } from '../middlewares.js'
 
 const router = express.Router()
 
 router.post('/register',checkEmail, register)
-router.get('/login',checkEmail, login)
+router.post('/login',checkEmail, login)
+router.get('/users', getAllUsers)
+router.get('/checkAuth', checkAuth)
+router.get('/apartments',checkAuth, getApartmentsFromArr)
 
 export default router

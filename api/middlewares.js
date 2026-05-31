@@ -1,9 +1,9 @@
 import jwt from "jsonwebtoken"
 import Category from "./models/category.js"
+import dotenv from "dotenv"
+import axios from "axios"
+import Apartment from "./models/apartment.js"
 
-// מידלוור כללי
-// אין לו הגדרת ניתוב
-// בהגדרת קריאת שרת שתרצה להשתמש בו - נשלח אליו
 export const checkEmail = (req, res, next) => {
     const { email} = req.body
     if (email && email.includes('@')) {
@@ -34,13 +34,12 @@ export const categoryExists = (req, res, next) => {
 
 // בדיקה האם נשלח טוקן והאם הוא תקין ותקף
 export const checkToken = (req, res, next) => {
-    if (!req.headers.authorization) {
+    if (prosses.env.TOKEN) {
         // אין הרשאה
         return res.status(401).send({ error: 'Authorization failed!' })
     }
 
-    const token = req.headers.authorization.split(' ')[1]
-
+    const token = prosses.env.TOKEN
     if (!token) {
         return res.status(401).send({ error: 'Authorization failed!' })
     }
@@ -59,52 +58,62 @@ export const checkToken = (req, res, next) => {
     })
 
 }
- export const getWeather = (c) => {
-     console.log(c[0]);
-     return new Promise((resolve, reject) => {        
-         axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${c},&appid=${process.env.WEATHER_API_KEY}`)
-             .then((response) => {
-                const weather = response.data;
-                let temp = kelvinToCelsius(weather.main.temp);
-                resolve({ temp, c: weather.name });
-     })
-             .catch((err) => {
-                reject(err);
-            });
+export const getWeather = async (req, res, next) => {
+    try {
+       const apartmentId = req.params.id;
+
+        // שליפת הדירה
+        const newApartment = await Apartment.findById(apartmentId).populate('cityName');
+        console.log(newApartment);
+
+        // const city = newApartment.city.name; // הנחה שהעיר מאוחסנת בשדה 'name' של האובייקט city
+        // console.log(city);
+
+        const response = await axios.get(
+            `https://api.openweathermap.org/data/2.5/weather`,
+            {
+                params: {
+                    q: newApartment.cityName,
+                    appid: process.env.WEATHER_API_KEY
+                }
+            }
+        );
+
+        const weather = response.data;
+        const temp = kelvinToCelsius(weather.main.temp);
+
+        req.weather = { temp, c: weather.name };
+
+        next();
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const checkAuth = (req, res,next) => {
+    const token = process.env.TOKEN;
+
+    // בדוק אם הטוקן קיים
+    if (!token) {
+        return res.status(401).send({ error: 'Authorization is null!' });
+    }
+
+    // אימות הטוקן
+    decode = jwt.verify(token, process.env.SECRET, (error, decoded) => {
+        if (error || !decoded) {
+            console.log(error.message);
+
+            console.log(decoded)
+            return res.status(401).send({ error: error.message });
+        }
+        
+        // כאן תוכל להחזיר תגובה אחרת אם הטוקן תקין
+        // return res.status(200).send({ message: 'Token is valid!' });
+        next()
     });
 }
 
-export const checkAuth = (req, res, next) => {
-    // req.headers.authorization.split(' ')[1]
-    if (!req.headers.authorization) {
-        // authorization - הרשאה
-        return res.status(401).send({ error: 'Authorization failed!' })
-    }
-    const arr = req.headers.authorization.split(' ')
-
-    if (arr.length == 1) {
-        return res.status(401).send({ error: 'Authorization failed!' })
-    }
-
-    // עד כאן בדיקה שהטוקן קיים
-
-    const [x, token] = arr
-
-    // jwt.verify - אימות
-    // בדיקה שהטוקן תקין ותקף
-    // callback בפונקציית ה 
-    // 1. שגיאה
-    // 2. אובייקט מפוענח - מכיל את הנתןנים ששמרנו על המשתמש
-    jwt.verify(token, process.env.SECRET, (error, decoded) => {
-        if (error || !decoded) {
-            // Authentication - אימות
-            console.log(error.message);
-
-            // return res.status(401).send({ error: 'Authentication failed!' })
-            return res.status(401).send({ error: error.message })
-        }
-        // יתכן שנרצה כאן לשמור נתונים באובייקט הבקשה
-        next()
-    })
-
+export const kelvinToCelsius = (kelvin) => {
+    return kelvin - 273.15;
 }
